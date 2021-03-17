@@ -1,73 +1,93 @@
-//#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-bpf")]
 
-use solana_program::{instruction::InstructionError, pubkey::Pubkey, system_instruction};
+use solana_program::{pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
     signature::{Keypair, Signer},
-    transaction::{Transaction, TransactionError},
-    transport::TransportError,
+    transaction::Transaction,
 };
-use solana_upgrade::{instruction, state::Mint};
+use solana_upgrade::{
+    instruction::{self, V1ToV2UpgradeData},
+    state::*,
+};
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
         "solana-upgrade",
-        spl_nft_erc_721::id(),
-        processor!(spl_nft_erc_721::processor::Processor::process_instruction),
+        solana_upgrade::id(),
+        processor!(solana_upgrade::processor::Processor::process_instruction),
     )
 }
 
 #[tokio::test]
-async fn initialize_mint_ok() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mint_account = Keypair::new();
-    let data = instruction::MintData::new("KC", "Kitty").unwrap();
+async fn upgrade_flow() {
+    let v1_account = Keypair::new();
+    let old = v1_account.pubkey();
+    let v2_account = Keypair::new();
+    let new = v2_account.pubkey();
+    let cluster = program_test().start_with_context().await;
+    let payer = cluster.payer;
+    let mut banks_client = cluster.banks_client;
+
+    //// v1
+    let data = instruction::InitArgsV1 {
+        key: Pubkey::new_unique(),
+        num: 33,
+        num_2: 666,
+    };
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(Mint::LEN as usize);
+    let lamports = rent.minimum_balance(StateV1::LEN as usize);
     let transaction =
-        create_mint_transaction(payer, mint_account, lamports, data, recent_blockhash);
+        create_v1_transaction(&payer, v1_account, lamports, data, cluster.last_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    //// v2
+    let data = instruction::InitArgsV2 {
+        key: Pubkey::new_unique(),
+        num: 33,
+        num_2: 666,
+        array: [0; 64],
+        key_2: Pubkey::new_unique(),
+    };
+    let rent = banks_client.get_rent().await.unwrap();
+    let lamports = rent.minimum_balance(StateV2::LEN as usize);
+    let transaction =
+        create_v2_transaction(&payer, v2_account, lamports, data, cluster.last_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    // check version and states of different accounts
+    let transaction = create_use_transaction(&payer, old, new, cluster.last_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    // upgrade v1 to v2 via copy into fresh account
+    let data = V1ToV2UpgradeData {
+        key_2: Pubkey::new_unique(),
+        array: [42; 64],
+    };
+    let (transaction, _new_account) =
+        create_upgrade_transaction(&payer, old, data, lamports, cluster.last_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
-#[tokio::test]
-async fn initialize_mint_not_rent_exempt() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mint_account = Keypair::new();
-    let data = instruction::MintData::new("KC", "Kitty").unwrap();
-    let transaction = create_mint_transaction(payer, mint_account, 0, data, recent_blockhash);
-    let result = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
-    assert!(matches!(
-        result,
-        TransportError::TransactionError(TransactionError::InstructionError(
-            1,
-            InstructionError::AccountNotRentExempt
-        ))
-    ));
-}
-
-fn create_mint_transaction(
-    payer: Keypair,
-    mint_account: Keypair,
+fn create_v1_transaction(
+    payer: &Keypair,
+    account: Keypair,
     lamports: u64,
-    data: instruction::MintData,
+    data: instruction::InitArgsV1,
     recent_blockhash: solana_program::hash::Hash,
 ) -> Transaction {
     let mut transaction = Transaction::new_with_payer(
         &[
             system_instruction::create_account(
                 &payer.pubkey(),
-                &mint_account.pubkey(),
+                &account.pubkey(),
                 lamports,
-                Mint::LEN,
-                &spl_nft_erc_721::id(),
+                StateV1::LEN as u64,
+                &solana_upgrade::id(),
             ),
-            instruction::initialize_mint(
-                &spl_nft_erc_721::id(),
-                &mint_account.pubkey(),
+            instruction::initialize_v1(
+                &solana_upgrade::id(),
+                &account.pubkey(),
                 data,
                 &payer.pubkey(),
             )
@@ -75,6 +95,85 @@ fn create_mint_transaction(
         ],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &mint_account], recent_blockhash);
+    transaction.sign(&[payer, &account], recent_blockhash);
     transaction
+}
+
+fn create_v2_transaction(
+    payer: &Keypair,
+    account: Keypair,
+    lamports: u64,
+    data: instruction::InitArgsV2,
+    recent_blockhash: solana_program::hash::Hash,
+) -> Transaction {
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &account.pubkey(),
+                lamports,
+                StateV2::LEN as u64,
+                &solana_upgrade::id(),
+            ),
+            instruction::initialize_v2(
+                &solana_upgrade::id(),
+                &account.pubkey(),
+                data,
+                &payer.pubkey(),
+            )
+            .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer, &account], recent_blockhash);
+    transaction
+}
+
+fn create_use_transaction(
+    payer: &Keypair,
+    old: Pubkey,
+    new: Pubkey,
+    recent_blockhash: solana_program::hash::Hash,
+) -> Transaction {
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            instruction::use_v1(&solana_upgrade::id(), &old, &payer.pubkey()).unwrap(),
+            instruction::use_v2(&solana_upgrade::id(), &new, &payer.pubkey()).unwrap(),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer], recent_blockhash);
+    transaction
+}
+
+fn create_upgrade_transaction(
+    payer: &Keypair,
+    old: Pubkey,
+    data: V1ToV2UpgradeData,
+    lamports: u64,
+    recent_blockhash: solana_program::hash::Hash,
+) -> (Transaction, Pubkey) {
+    let new = Keypair::new();
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &new.pubkey(),
+                lamports,
+                StateV2::LEN as u64,
+                &solana_upgrade::id(),
+            ),
+            instruction::upgrade_v1_to_v2(
+                &solana_upgrade::id(),
+                &old,
+                &new.pubkey(),
+                data,
+                &payer.pubkey(),
+            )
+            .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer, &new], recent_blockhash);
+    (transaction, new.pubkey())
 }

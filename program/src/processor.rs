@@ -104,7 +104,7 @@ impl Processor {
         program_id: &Pubkey,
         old: &AccountInfo,
         new: &AccountInfo,
-        input: V2ToV1UpgradeData,
+        input: V1ToV2UpgradeData,
         signer: &AccountInfo,
     ) -> ProgramResult {
         validate_signer(&signer)?;

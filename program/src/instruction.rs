@@ -22,7 +22,7 @@ pub struct InitArgsV2 {
     pub num_2: u64,
 }
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
-pub struct V2ToV1UpgradeData {
+pub struct V1ToV2UpgradeData {
     pub array: [u8; 64],
     pub key_2: Pubkey,
 }
@@ -57,87 +57,85 @@ pub enum UpgradeInstruction {
     /// 1. [writable] initialized original account of v1 version
     /// 2. [writable] next version account not yet initialized
     /// 3. [signer]
-    UpgradeV1ToV2(V2ToV1UpgradeData),
+    UpgradeV1ToV2(V1ToV2UpgradeData),
 }
 
-impl UpgradeInstruction {
-    pub fn initialize_v1(
-        program_id: &Pubkey,
-        account: &Pubkey,
-        data: InitArgsV1,
-        signer: &Pubkey,
-    ) -> Result<Instruction, InstructionError> {
-        let data = UpgradeInstruction::InitV1(data);
-        let accounts = vec![
-            AccountMeta::new(*account, false),
-            AccountMeta::new_readonly(*signer, true),
-        ];
+pub fn initialize_v1(
+    program_id: &Pubkey,
+    account: &Pubkey,
+    data: InitArgsV1,
+    signer: &Pubkey,
+) -> Result<Instruction, InstructionError> {
+    let data = UpgradeInstruction::InitV1(data);
+    let accounts = vec![
+        AccountMeta::new(*account, false),
+        AccountMeta::new_readonly(*signer, true),
+    ];
 
-        Ok(Instruction::new_with_borsh(*program_id, &data, accounts))
-    }
+    Ok(Instruction::new_with_borsh(*program_id, &data, accounts))
+}
 
-    pub fn initialize_v2(
-        program_id: &Pubkey,
-        account: &Pubkey,
-        data: InitArgsV2,
-        signer: &Pubkey,
-    ) -> Result<Instruction, InstructionError> {
-        let data = UpgradeInstruction::InitV2(data);
-        let accounts = vec![
-            AccountMeta::new(*account, false),
-            AccountMeta::new_readonly(*signer, true),
-        ];
-        Ok(Instruction::new_with_borsh(*program_id, &data, accounts))
-    }
+pub fn initialize_v2(
+    program_id: &Pubkey,
+    account: &Pubkey,
+    data: InitArgsV2,
+    signer: &Pubkey,
+) -> Result<Instruction, InstructionError> {
+    let data = UpgradeInstruction::InitV2(data);
+    let accounts = vec![
+        AccountMeta::new(*account, false),
+        AccountMeta::new_readonly(*signer, true),
+    ];
+    Ok(Instruction::new_with_borsh(*program_id, &data, accounts))
+}
 
-    pub fn use_v1(
-        program_id: &Pubkey,
-        account: &Pubkey,
-        signer: &Pubkey,
-    ) -> Result<Instruction, InstructionError> {
-        let accounts = vec![
-            AccountMeta::new(*account, false),
-            AccountMeta::new_readonly(*signer, true),
-        ];
-        Ok(Instruction::new_with_borsh(
-            *program_id,
-            &UpgradeInstruction::UseV1,
-            accounts,
-        ))
-    }
+pub fn use_v1(
+    program_id: &Pubkey,
+    account: &Pubkey,
+    signer: &Pubkey,
+) -> Result<Instruction, InstructionError> {
+    let accounts = vec![
+        AccountMeta::new(*account, false),
+        AccountMeta::new_readonly(*signer, true),
+    ];
+    Ok(Instruction::new_with_borsh(
+        *program_id,
+        &UpgradeInstruction::UseV1,
+        accounts,
+    ))
+}
 
-    pub fn use_v2(
-        program_id: &Pubkey,
-        account: &Pubkey,
-        signer: &Pubkey,
-    ) -> Result<Instruction, InstructionError> {
-        let accounts = vec![
-            AccountMeta::new(*account, false),
-            AccountMeta::new_readonly(*signer, true),
-        ];
-        Ok(Instruction::new_with_borsh(
-            *program_id,
-            &UpgradeInstruction::UseV2,
-            accounts,
-        ))
-    }
+pub fn use_v2(
+    program_id: &Pubkey,
+    account: &Pubkey,
+    signer: &Pubkey,
+) -> Result<Instruction, InstructionError> {
+    let accounts = vec![
+        AccountMeta::new(*account, false),
+        AccountMeta::new_readonly(*signer, true),
+    ];
+    Ok(Instruction::new_with_borsh(
+        *program_id,
+        &UpgradeInstruction::UseV2,
+        accounts,
+    ))
+}
 
-    pub fn upgrade_v1_to_v2(
-        program_id: &Pubkey,
-        old: &Pubkey,
-        new: &Pubkey,
-        data: V2ToV1UpgradeData,
-        signer: &Pubkey,
-    ) -> Result<Instruction, InstructionError> {
-        let accounts = vec![
-            AccountMeta::new(*old, false),
-            AccountMeta::new(*new, false),
-            AccountMeta::new_readonly(*signer, true),
-        ];
-        Ok(Instruction::new_with_borsh(
-            *program_id,
-            &UpgradeInstruction::UpgradeV1ToV2(data),
-            accounts,
-        ))
-    }
+pub fn upgrade_v1_to_v2(
+    program_id: &Pubkey,
+    old: &Pubkey,
+    new: &Pubkey,
+    data: V1ToV2UpgradeData,
+    signer: &Pubkey,
+) -> Result<Instruction, InstructionError> {
+    let accounts = vec![
+        AccountMeta::new(*old, false),
+        AccountMeta::new(*new, false),
+        AccountMeta::new_readonly(*signer, true),
+    ];
+    Ok(Instruction::new_with_borsh(
+        *program_id,
+        &UpgradeInstruction::UpgradeV1ToV2(data),
+        accounts,
+    ))
 }
