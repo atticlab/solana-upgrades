@@ -1,11 +1,13 @@
 //! Program state processor
 
-use crate::{error::UpgradeError, instruction::*, state::*};
+use crate::{error::UpgradeError, legacy_instruction::*, state::*};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,
 };
+use crate::legacy_instruction::legacy_instruction_structs::{InitArgsV1, InitArgsV2, V1ToV2UpgradeData};
+
 
 /// Program state handler.
 pub struct Processor {}
@@ -143,7 +145,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an instruction
+    /// Processes an legacy_instruction
     pub fn process_instruction(
         program_id: &Pubkey,
         accounts: &[AccountInfo],

@@ -11,9 +11,10 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use solana_upgrade::{
-    instruction::{self},
+    legacy_instruction::{self},
     state::*,
 };
+use legacy_instruction::legacy_instruction_structs::InitArgsV1;
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
@@ -31,11 +32,11 @@ async fn upgrade_my_flow() {
     let mut banks_client = cluster.banks_client;
 
     //// v1
-    let data = instruction::InitArgsV1 {
+/*    let data = legacy_instruction::InitArgsV1 {
         key: Pubkey::new_unique(),
         num: 33,
         num_2: 666,
-    };
+    };*/
     let rent = banks_client.get_rent().await.unwrap();
     let lamports = rent.minimum_balance(StateV1::LEN as usize); // <= pay attention
     //let transaction =
@@ -50,7 +51,7 @@ fn create_transaction_with_state (
     payer: &Keypair,
     account: Keypair,
     lamports: u64,
-    data: instruction::InitArgsV1,
+    data: legacy_instruction::InitArgsV1,
     recent_blockhash: solana_program::hash::Hash,
 ) -> Transaction {
     let create_acc_sys_ix =
@@ -61,7 +62,7 @@ fn create_transaction_with_state (
         StateWithBytes::LEN as u64,
 &solana_upgrade::id(),
     );
-  /*  let initialize_acc_with_fib_sequence = instruction::initialize_fibonacci(
+  /*  let initialize_acc_with_fib_sequence = legacy_instruction::initialize_fibonacci(
         &solana_upgrade::id(),
         &account.pubkey(),
         data,

@@ -11,9 +11,12 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use solana_upgrade::{
-    instruction::{self, V1ToV2UpgradeData},
+    legacy_instruction::{self},
     state::*,
 };
+use legacy_instruction::legacy_instructions_implementation::*;
+use solana_upgrade::legacy_instruction::legacy_instructions_implementation;
+use solana_upgrade::legacy_instruction::legacy_instruction_structs::{InitArgsV1, InitArgsV2};
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
@@ -34,7 +37,7 @@ async fn upgrade_flow() {
     let mut banks_client = cluster.banks_client;
 
     //// v1
-    let data = instruction::InitArgsV1 {
+    let data = InitArgsV1 {
         key: Pubkey::new_unique(),
         num: 33,
         num_2: 666,
@@ -46,7 +49,7 @@ async fn upgrade_flow() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     //// v2
-    let data = instruction::InitArgsV2 {
+    let data = InitArgsV2 {
         key: Pubkey::new_unique(),
         num: 33,
         num_2: 666,
@@ -64,7 +67,7 @@ async fn upgrade_flow() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     // upgrade v1 to v2 via copy into fresh account
-    let data = V1ToV2UpgradeData {
+    let data = legacy_instruction::legacy_instruction_structs::V1ToV2UpgradeData {
         key_2: Pubkey::new_unique(),
         array: [42; 64],
     };
@@ -83,7 +86,7 @@ fn create_v1_transaction(
     payer: &Keypair,
     account: Keypair,
     lamports: u64,
-    data: instruction::InitArgsV1,
+    data: InitArgsV1,
     recent_blockhash: solana_program::hash::Hash,
 ) -> Transaction {
     let mut transaction = Transaction::new_with_payer(
@@ -95,7 +98,7 @@ fn create_v1_transaction(
                 StateV1::LEN as u64,
                 &solana_upgrade::id(),
             ),
-            instruction::initialize_v1(
+            legacy_instructions_implementation::initialize_v1(
                 &solana_upgrade::id(),
                 &account.pubkey(),
                 data,
@@ -114,7 +117,7 @@ fn create_v2_transaction(
     payer: &Keypair,
     account: Keypair,
     lamports: u64,
-    data: instruction::InitArgsV2,
+    data: InitArgsV2,
     recent_blockhash: solana_program::hash::Hash,
 ) -> Transaction {
     let mut transaction = Transaction::new_with_payer(
@@ -126,7 +129,7 @@ fn create_v2_transaction(
                 StateV2::LEN as u64,
                 &solana_upgrade::id(),
             ),
-            instruction::initialize_v2(
+            initialize_v2(
                 &solana_upgrade::id(),
                 &account.pubkey(),
                 data,
@@ -148,8 +151,8 @@ fn create_use_transaction(
 ) -> Transaction {
     let mut transaction = Transaction::new_with_payer(
         &[
-            instruction::use_v1(&solana_upgrade::id(), &old, &payer.pubkey()).unwrap(),
-            instruction::use_v2(&solana_upgrade::id(), &new, &payer.pubkey()).unwrap(),
+            use_v1(&solana_upgrade::id(), &old, &payer.pubkey()).unwrap(),
+            use_v2(&solana_upgrade::id(), &new, &payer.pubkey()).unwrap(),
         ],
         Some(&payer.pubkey()),
     );
@@ -160,7 +163,7 @@ fn create_use_transaction(
 fn create_upgrade_transaction(
     payer: &Keypair,
     old: Pubkey,
-    data: V1ToV2UpgradeData,
+    data: legacy_instruction::legacy_instruction_structs::V1ToV2UpgradeData,
     lamports: u64,
     recent_blockhash: solana_program::hash::Hash,
 ) -> (Transaction, Pubkey) {
@@ -174,7 +177,7 @@ fn create_upgrade_transaction(
                 StateV2::LEN as u64,
                 &solana_upgrade::id(),
             ),
-            instruction::upgrade_v1_to_v2(
+            upgrade_v1_to_v2(
                 &solana_upgrade::id(),
                 &old,
                 &new.pubkey(),
