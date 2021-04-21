@@ -40,7 +40,7 @@ async fn upgrade_flow() {
         num_2: 666,
     };
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(StateV1::LEN as usize);
+    let lamports = rent.minimum_balance(StateV1::LEN as usize); // <= pay attention
     let transaction =
         create_v1_transaction(&payer, v1_account, lamports, data, cluster.last_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
@@ -68,11 +68,17 @@ async fn upgrade_flow() {
         key_2: Pubkey::new_unique(),
         array: [42; 64],
     };
+
+    let lamports = rent.minimum_balance(StateV2::LEN as usize);
+
     let (transaction, _new_account) =
         create_upgrade_transaction(&payer, old, data, lamports, cluster.last_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+
+
+// obsolete \/
 fn create_v1_transaction(
     payer: &Keypair,
     account: Keypair,
@@ -102,6 +108,7 @@ fn create_v1_transaction(
     transaction.sign(&[payer, &account], recent_blockhash);
     transaction
 }
+
 
 fn create_v2_transaction(
     payer: &Keypair,

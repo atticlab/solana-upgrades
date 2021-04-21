@@ -27,6 +27,8 @@ pub struct V1ToV2UpgradeData {
     pub key_2: Pubkey,
 }
 
+
+
 /// Instruction definition
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub enum UpgradeInstruction {
@@ -58,8 +60,16 @@ pub enum UpgradeInstruction {
     /// 2. [writable] next version account not yet initialized
     /// 3. [signer]
     UpgradeV1ToV2(V1ToV2UpgradeData),
-}
 
+    // Updates account from V1 to V2.
+// 1. [read-only] [u8]
+//    InitFibonacci(fib_seq),
+}
+/*
+pub fn initialize_fibonacci(fib_seq: FibonacciSequence) -> Instruction  {
+    let initialized_fib_seq = UpgradeInstruction::InitFibonacci(fib_seq);
+}
+*/
 pub fn initialize_v1(
     program_id: &Pubkey,
     account: &Pubkey,
