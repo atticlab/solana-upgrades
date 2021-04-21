@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::UpgradeError, legacy_instruction::*, state::*};
+use crate::{error::UpgradeError, legacy_instruction::*, legacy_state::*};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
@@ -11,6 +11,12 @@ use crate::legacy_instruction::legacy_instruction_structs::{InitArgsV1, InitArgs
 
 /// Program state handler.
 pub struct Processor {}
+
+impl Processor {
+    pub fn process_initialize_fibonacci() -> ProgramResult {
+        Ok(())
+    }
+}
 impl Processor {
     pub fn process_initialize_v1(
         program_id: &Pubkey,
@@ -188,6 +194,9 @@ impl Processor {
                 } else {
                     Err(ProgramError::NotEnoughAccountKeys)
                 }
+            }
+            UpgradeInstruction::InitFibonacci(data) => {
+                Self::process_initialize_fibonacci()
             }
         }
     }

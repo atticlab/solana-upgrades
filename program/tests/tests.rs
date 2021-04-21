@@ -12,7 +12,7 @@ use solana_sdk::{
 };
 use solana_upgrade::{
     legacy_instruction::{self},
-    state::*,
+    legacy_state::*,
 };
 use legacy_instruction::legacy_instructions_implementation::*;
 use solana_upgrade::legacy_instruction::legacy_instructions_implementation;
@@ -163,7 +163,7 @@ fn create_use_transaction(
 fn create_upgrade_transaction(
     payer: &Keypair,
     old: Pubkey,
-    data: legacy_instruction::legacy_instruction_structs::V1ToV2UpgradeData,
+    new_difference: legacy_instruction::legacy_instruction_structs::V1ToV2UpgradeData,
     lamports: u64,
     recent_blockhash: solana_program::hash::Hash,
 ) -> (Transaction, Pubkey) {
@@ -177,11 +177,11 @@ fn create_upgrade_transaction(
                 StateV2::LEN as u64,
                 &solana_upgrade::id(),
             ),
-            upgrade_v1_to_v2(
+            new_ix_upgrade_v1_to_v2(
                 &solana_upgrade::id(),
                 &old,
                 &new.pubkey(),
-                data,
+                new_difference,
                 &payer.pubkey(),
             )
             .unwrap(),

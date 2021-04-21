@@ -67,11 +67,11 @@ pub fn use_v2(
     ))
 }
 
-pub fn upgrade_v1_to_v2(
+pub fn new_ix_upgrade_v1_to_v2(
     program_id: &Pubkey,
     old: &Pubkey,
     new: &Pubkey,
-    data: V1ToV2UpgradeData,
+    difference: V1ToV2UpgradeData,
     signer: &Pubkey,
 ) -> Result<Instruction, InstructionError> {
     let accounts = vec![
@@ -81,7 +81,7 @@ pub fn upgrade_v1_to_v2(
     ];
     Ok(Instruction::new_with_borsh(
         *program_id,
-        &UpgradeInstruction::UpgradeV1ToV2(data),
+        &UpgradeInstruction::UpgradeV1ToV2(difference),
         accounts,
     ))
 }

@@ -3,6 +3,7 @@
 pub mod error;
 pub mod legacy_instruction;
 pub mod processor;
+pub mod legacy_state;
 pub mod state;
 
 solana_program::declare_id!("pKSLLSUCsqEsqURK9MhDopYZfij6GRWt7oPfC5DwtAq");
