@@ -26,6 +26,7 @@ pub fn program_test() -> ProgramTest {
     )
 }
 
+
 #[tokio::test]
 async fn upgrade_flow() {
     let v1_account = Keypair::new();
@@ -191,3 +192,4 @@ fn create_upgrade_transaction(
     transaction.sign(&[payer, &new], recent_blockhash);
     (transaction, new.pubkey())
 }
+

@@ -7,13 +7,28 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use crate::legacy_instruction::legacy_instruction_structs::{InitArgsV1, InitArgsV2, V1ToV2UpgradeData};
+use crate::state::FibonacciSequence;
 
 
 /// Program state handler.
 pub struct Processor {}
 
 impl Processor {
-    pub fn process_initialize_fibonacci() -> ProgramResult {
+    pub fn process_initialize_fibonacci(account: FibonacciSequence) -> ProgramResult {
+        let _account_with_fibonacci_sequence = account;
+        /*let mut escrow_info = Escrow::unpack_unchecked(&escrow_account.data.borrow())?;
+        if escrow_info.is_initialized() {
+            return Err(ProgramError::AccountAlreadyInitialized);
+        }
+
+        escrow_info.is_initialized = true;
+        escrow_info.initializer_pubkey = *initializer.key;
+        escrow_info.temp_token_account_pubkey = *temp_token_account.key;
+        escrow_info.initializer_token_to_receive_account_pubkey = *token_to_receive_account.key;
+        escrow_info.expected_amount = amount;
+
+        Escrow::pack(escrow_info, &mut escrow_account.data.borrow_mut())?;
+*/
         Ok(())
     }
 }
@@ -195,8 +210,8 @@ impl Processor {
                     Err(ProgramError::NotEnoughAccountKeys)
                 }
             }
-            UpgradeInstruction::InitFibonacci(data) => {
-                Self::process_initialize_fibonacci()
+            UpgradeInstruction::InitFibonacci(fib_seq) => {
+                Self::process_initialize_fibonacci(fib_seq)
             }
         }
     }
