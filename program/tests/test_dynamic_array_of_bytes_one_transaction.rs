@@ -1,16 +1,13 @@
 #![cfg(feature = "test-bpf")]
 
 use solana_program::{pubkey::Pubkey, system_instruction};
-use solana_program_test::{processor, ProgramTest, tokio, BanksClient, ProgramTestContext};
+use solana_program_test::{processor, ProgramTest, tokio, BanksClient};
 use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
 
-use solana_upgrade::{
-    legacy_state::*,
-};
-use solana_upgrade::solana_program::instruction::Instruction;
+use solana_program::instruction::Instruction;
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
@@ -20,6 +17,8 @@ pub fn program_test() -> ProgramTest {
     )
 }
 
+
+
 #[tokio::test]
 async fn test_dynamic_fibonacci_sequence() {
     let v1_account = Keypair::new();
@@ -28,7 +27,7 @@ async fn test_dynamic_fibonacci_sequence() {
     let mut banks_client = cluster.banks_client;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let rent_cost = rent.minimum_balance(StateV1::LEN as usize);
+    let rent_cost = rent.minimum_balance(DummyState::LEN as usize);
 
     create_and_process_transaction_with_small_allocated_space_size(&v1_account, cluster.last_blockhash, &payer, &mut banks_client, rent_cost).await;
     assert_default_fibonacci_sequence_length_is_two(&v1_account, &mut banks_client).await;
@@ -116,4 +115,18 @@ pub fn create_acc_system_ix(payer: &&Keypair, account: &Keypair, rent: u64, spac
                                         space,
                                         &solana_upgrade::id(),
     )
+}
+
+
+pub struct DummyState {
+    pub state_version: u8,
+    pub num: u32,
+    pub num_2: u16,
+    pub key: Pubkey,
+}
+
+
+
+impl DummyState {
+    pub const LEN: usize = 1 + 4 + 2 + 32;
 }

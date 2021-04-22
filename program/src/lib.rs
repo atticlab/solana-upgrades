@@ -1,15 +1,12 @@
 //! Example of how to version and upgrade account data
 
 pub mod error;
-pub mod legacy_instruction;
 pub mod processor;
-pub mod legacy_state;
-pub mod state;
 
 solana_program::declare_id!("pKSLLSUCsqEsqURK9MhDopYZfij6GRWt7oPfC5DwtAq");
 
 /// Current program version
-pub const PROGRAM_VERSION: u8 = 1;
+pub const PROGRAM_VERSION: u8 = 2;
 
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
