@@ -1,7 +1,7 @@
 #![cfg(feature = "test-bpf")]
 
 use solana_program::{pubkey::Pubkey, system_instruction};
-use solana_program_test::{processor, ProgramTest, tokio, BanksClient};
+use solana_program_test::{processor, ProgramTest, tokio, BanksClient, ProgramTestContext};
 use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
@@ -28,33 +28,39 @@ async fn test_dynamic_fibonacci_sequence() {
     let mut banks_client = cluster.banks_client;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(StateV1::LEN as usize); // <= pay attention
-    let create_account = create_transaction_with_space(&payer, &v1_account, lamports, cluster.last_blockhash,
-                                                       2);
-    banks_client.process_transaction(create_account).await.unwrap();
+    let rent_cost = rent.minimum_balance(StateV1::LEN as usize);
 
+    create_and_process_transaction_with_small_allocated_space_size(&v1_account, cluster.last_blockhash, &payer, &mut banks_client, rent_cost).await;
     assert_default_fibonacci_sequence_length_is_two(&v1_account, &mut banks_client).await;
     increase_fibonacci_sequence_locally(&v1_account, &mut banks_client).await;
     assert_global_fibonacci_sequence_has_not_changed(&v1_account, &mut banks_client).await;
+    create_and_process_transaction_with_small_allocated_space_size(&v1_account, cluster.last_blockhash, &payer, &mut banks_client, rent_cost).await;
+    expect_failing_transaction_when_increased_space(&v1_account, cluster.last_blockhash, &payer, &mut banks_client, rent_cost).await;
+}
 
-    expect_failing_transaction_when_increased_space(&v1_account, cluster.last_blockhash, &payer, &mut banks_client, lamports).await;
+async fn create_and_process_transaction_with_small_allocated_space_size(v1_account: &Keypair, recent_blockhash: solana_program::hash::Hash, payer: &Keypair, banks_client: &mut BanksClient, rent_cost: u64) {
+    let transaction2 = create_transaction_with_space(&payer, &v1_account, rent_cost, recent_blockhash,
+                                                     2);
+    let tx_result = banks_client.process_transaction(transaction2).await;
+    tx_result.unwrap();
 }
 
 async fn expect_failing_transaction_when_increased_space(v1_account: &Keypair, recent_blockhash: solana_program::hash::Hash, payer: &Keypair, banks_client: &mut BanksClient, lamports: u64) {
     let transaction2 = create_transaction_with_space(&payer, &v1_account, lamports, recent_blockhash,
-                                                     100);
+                                                     3);
 
     let tx_result = banks_client.process_transaction(transaction2).await;
     // As expected transaction failes Transaction failed custom_transaction_error 0x0
+    // It is not possible to process_transaction when space is increased
     tx_result.unwrap_err();
 }
 
 async fn assert_default_fibonacci_sequence_length_is_two(v1_account: &Keypair, banks_client: &mut BanksClient) {
     let acc_option = banks_client.get_account(v1_account.pubkey()).await.unwrap();
     let acc = acc_option.unwrap();
-    //let fibonacci: Vec<u8> = vec![1, 1];
-    //acc.data = fibonacci;
     assert_eq!(2, acc.data.len());
+    assert_eq!(vec![0, 0], acc.data);
+
 }
 
 async fn increase_fibonacci_sequence_locally(v1_account: &Keypair, banks_client: &mut BanksClient) {
