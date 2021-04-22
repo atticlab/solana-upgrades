@@ -33,13 +33,31 @@ async fn test_dynamic_fibonacci_sequence() {
                                                        2);
     banks_client.process_transaction(create_account).await.unwrap();
 
-    {
-        let acc_option = banks_client.get_account(v1_account.pubkey()).await.unwrap();
-        let mut acc = acc_option.unwrap();
-        let fibonacci: Vec<u8> = vec![1, 1];
-        acc.data = fibonacci;
-        assert_eq!(2, acc.data.len());
-    }
+    assert_default_fibonacci_sequence_length_is_two(&v1_account, &mut banks_client).await;
+    increase_fibonacci_sequence_locally(&v1_account, &mut banks_client).await;
+    assert_global_fibonacci_sequence_has_not_changed(&v1_account, &mut banks_client).await;
+
+    expect_failing_transaction_when_increased_space(&v1_account, cluster.last_blockhash, &payer, &mut banks_client, lamports).await;
+}
+
+async fn expect_failing_transaction_when_increased_space(v1_account: &Keypair, recent_blockhash: solana_program::hash::Hash, payer: &Keypair, banks_client: &mut BanksClient, lamports: u64) {
+    let transaction2 = create_transaction_with_space(&payer, &v1_account, lamports, recent_blockhash,
+                                                     100);
+
+    let tx_result = banks_client.process_transaction(transaction2).await;
+    // As expected transaction failes Transaction failed custom_transaction_error 0x0
+    tx_result.unwrap_err();
+}
+
+async fn assert_default_fibonacci_sequence_length_is_two(v1_account: &Keypair, banks_client: &mut BanksClient) {
+    let acc_option = banks_client.get_account(v1_account.pubkey()).await.unwrap();
+    let acc = acc_option.unwrap();
+    //let fibonacci: Vec<u8> = vec![1, 1];
+    //acc.data = fibonacci;
+    assert_eq!(2, acc.data.len());
+}
+
+async fn increase_fibonacci_sequence_locally(v1_account: &Keypair, banks_client: &mut BanksClient) {
     {
         // get account and verify that it holds fibonacci
         let account_option = banks_client.get_account(v1_account.pubkey()).await.unwrap();
@@ -54,19 +72,12 @@ async fn test_dynamic_fibonacci_sequence() {
         acc_after_tx.data = fibonacci;
         assert_eq!(4, acc_after_tx.data.len());
     }
-    test_global_fibonacci_sequence_has_not_changed(&v1_account, &mut banks_client).await;
-
-    let transaction2 = create_transaction_with_space(&payer, &v1_account, lamports, cluster.last_blockhash,
-    100);
-
-    banks_client.process_transaction(transaction2).await.unwrap();
-
 }
 
-async fn test_global_fibonacci_sequence_has_not_changed(v1_account: &Keypair, banks_client: &mut BanksClient) {
+async fn assert_global_fibonacci_sequence_has_not_changed(v1_account: &Keypair, banks_client: &mut BanksClient) {
     {
         let account_option = banks_client.get_account(v1_account.pubkey()).await.unwrap();
-        let mut acc_after_fibonacci_seq_was_modified = account_option.unwrap();
+        let acc_after_fibonacci_seq_was_modified = account_option.unwrap();
         // as you can see even though we set acc data to [1, 1, 2, 4], its length is still 2
         assert_eq!(2, acc_after_fibonacci_seq_was_modified.data.len());
     }
