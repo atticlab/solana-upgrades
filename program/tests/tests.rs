@@ -13,7 +13,7 @@ use solana_upgrade::{
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
-        "solana-upgrade",
+        "solana_upgrade",
         solana_upgrade::id(),
         processor!(solana_upgrade::processor::Processor::process_instruction),
     )
